@@ -345,7 +345,7 @@ if has('nvim')
     let menu_choices = []
 
     for index in range(len(g:promptKeys))
-      call add(menu_choices, string(index + 1) . ". " . g:promptKeys[index])
+      call add(menu_choices, string(index + 1) . ". " . Capitalize(g:promptKeys[index]))
     endfor
 
     let choice = inputlist(menu_choices)
