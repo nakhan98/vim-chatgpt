@@ -38,6 +38,7 @@ endif
 let code_wrapper_snippet = "Given the following code snippet: "
 let g:prompt_templates = {
 \ 'ask': '',
+\ 'complete': 'Can you complete/implement/fix this? ' . code_wrapper_snippet,
 \ 'rewrite': 'Can you rewrite this more idiomatically? ' . code_wrapper_snippet,
 \ 'review': 'Can you provide a code review? ' . code_wrapper_snippet,
 \ 'document': 'Return documentation following language pattern conventions. ' . code_wrapper_snippet,
@@ -136,7 +137,8 @@ def safe_vim_eval(expression):
 def create_client():
     api_type = safe_vim_eval('g:api_type')
     api_key = os.getenv('OPENAI_API_KEY') or safe_vim_eval('g:chat_gpt_key') or safe_vim_eval('g:openai_api_key')
-    openai_base_url = os.getenv('OPENAI_PROXY') or os.getenv('OPENAI_API_BASE') or safe_vim_eval('g:openai_base_url')
+    openai_base_url = (os.getenv('OPENAI_PROXY') or os.getenv('OPENAI_API_BASE')
+        or safe_vim_eval('g:openai_base_url'))
 
     if api_type == 'azure':
         azure_endpoint = safe_vim_eval('g:azure_endpoint')
@@ -396,5 +398,26 @@ function! SetPersona(persona)
     end
 endfunction
 
+function! s:ClearChatGPTSession()
+  " Check if the buffer exists
+  if bufexists('gpt-persistent-session')
+    " Get the buffer number
+    let bufnr = bufnr('gpt-persistent-session')
+
+    " Delete all lines in the buffer
+    silent! call deletebufline(bufnr, 1, '$')
+
+    " Find and close all windows displaying this buffer
+    for winid in win_findbuf(bufnr)
+      call win_execute(winid, 'close')
+    endfor
+
+    echo "ChatGPT session content cleared"
+  else
+    echo "No active ChatGPT session found"
+  endif
+endfunction
+
+command! ClearChatGPTSession call s:ClearChatGPTSession()
 
 command! -nargs=1 GptBe call SetPersona(<q-args>)
