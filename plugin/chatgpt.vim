@@ -327,51 +327,78 @@ function! GenerateCommitMessage()
 endfunction
 
 " Menu for ChatGPT
-function! s:ChatGPTMenuSink(id, choice)
-  call popup_hide(a:id)
-  let choices = {}
+if has('nvim')
+  " Menu for ChatGPT using inputlist for Neovim
+  function! s:ChatGPTMenuSink(choice)
+    let choices = {}
 
-  for index in range(len(g:promptKeys))
-    let choices[index+1] = g:promptKeys[index]
-  endfor
+    for index in range(len(g:promptKeys))
+      let choices[index+1] = g:promptKeys[index]
+    endfor
 
-  if a:choice > 0 && a:choice <= len(g:promptKeys)
-    call SendHighlightedCodeToChatGPT(choices[a:choice], input('Prompt > '))
-  endif
-endfunction
+    if a:choice > 0 && a:choice <= len(g:promptKeys)
+      call SendHighlightedCodeToChatGPT(choices[a:choice], input('Prompt > '))
+    endif
+  endfunction
 
-function! s:ChatGPTMenuFilter(id, key)
+  function! ChatGPTMenu() range
+    let menu_choices = []
 
-  if a:key > 0 && a:key <= len(g:promptKeys)
-    call s:ChatGPTMenuSink(a:id, a:key)
-  else " No shortcut, pass to generic filter
-    return popup_filter_menu(a:id, a:key)
-  endif
-endfunction
+    for index in range(len(g:promptKeys))
+      call add(menu_choices, string(index + 1) . ". " . g:promptKeys[index])
+    endfor
 
-function! ChatGPTMenu() range
-  echo a:firstline. a:lastline
-  let menu_choices = []
+    let choice = inputlist(menu_choices)
+    call s:ChatGPTMenuSink(choice)
+  endfunction
+else
+  " Original menu for Vim
+  function! s:ChatGPTMenuSink(id, choice)
+    call popup_hide(a:id)
+    let choices = {}
 
-  for index in range(len(g:promptKeys))
-    call add(menu_choices, string(index + 1) . ". " . g:promptKeys[index])
-  endfor
+    for index in range(len(g:promptKeys))
+      let choices[index+1] = g:promptKeys[index]
+    endfor
 
-  call popup_menu(menu_choices, #{
-        \ pos: 'topleft',
-        \ line: 'cursor',
-        \ col: 'cursor+2',
-        \ title: ' Chat GPT ',
-        \ highlight: 'question',
-        \ borderchars: ['─', '│', '─', '│', '╭', '╮', '╯', '╰'],
-        \ callback: function('s:ChatGPTMenuSink'),
-        \ border: [],
-        \ cursorline: 1,
-        \ padding: [0,1,0,1],
-        \ filter: function('s:ChatGPTMenuFilter'),
-        \ mapping: 0,
-        \ })
-endfunction
+    if a:choice > 0 && a:choice <= len(g:promptKeys)
+      call SendHighlightedCodeToChatGPT(choices[a:choice], input('Prompt > '))
+    endif
+  endfunction
+
+  function! s:ChatGPTMenuFilter(id, key)
+
+    if a:key > 0 && a:key <= len(g:promptKeys)
+      call s:ChatGPTMenuSink(a:id, a:key)
+    else " No shortcut, pass to generic filter
+      return popup_filter_menu(a:id, a:key)
+    endif
+  endfunction
+
+  function! ChatGPTMenu() range
+    echo a:firstline. a:lastline
+    let menu_choices = []
+
+    for index in range(len(g:promptKeys))
+      call add(menu_choices, string(index + 1) . ". " . g:promptKeys[index])
+    endfor
+
+    call popup_menu(menu_choices, #{
+          \ pos: 'topleft',
+          \ line: 'cursor',
+          \ col: 'cursor+2',
+          \ title: ' Chat GPT ',
+          \ highlight: 'question',
+          \ borderchars: ['─', '│', '─', '│', '╭', '╮', '╯', '╰'],
+          \ callback: function('s:ChatGPTMenuSink'),
+          \ border: [],
+          \ cursorline: 1,
+          \ padding: [0,1,0,1],
+          \ filter: function('s:ChatGPTMenuFilter'),
+          \ mapping: 0,
+          \ })
+  endfunction
+endif
 
 " Expose mappings
 vnoremap <silent> <Plug>(chatgpt-menu) :call ChatGPTMenu()<CR>
