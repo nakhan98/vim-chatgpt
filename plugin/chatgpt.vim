@@ -420,4 +420,16 @@ endfunction
 
 command! ClearChatGPTSession call s:ClearChatGPTSession()
 
+function! s:SetChatGPTAPIKey()
+    let g:chat_gpt_key = trim(input("Enter ChatGPT API key: "))
+endfunction
+
+command! SetChatGPTAPIKey call s:SetChatGPTAPIKey()
+
+function! s:SetOpenAIBaseURL()
+    let g:openai_base_url = trim(input("Enter OpenAI base URL: "))
+endfunction
+
+command! SetOpenAIBaseURL call s:SetOpenAIBaseURL()
+
 command! -nargs=1 GptBe call SetPersona(<q-args>)
