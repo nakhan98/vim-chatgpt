@@ -342,7 +342,7 @@ if has('nvim')
   endfunction
 
   function! ChatGPTMenu() range
-    let menu_choices = []
+    let menu_choices = ['ChatGPT-Vim Mod', '---------------']
 
     for index in range(len(g:promptKeys))
       call add(menu_choices, string(index + 1) . ". " . Capitalize(g:promptKeys[index]))
