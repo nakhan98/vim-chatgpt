@@ -38,7 +38,6 @@ endif
 let code_wrapper_snippet = "Given the following code snippet: "
 let g:prompt_templates = {
 \ 'ask': '',
-\ 'complete': 'Can you complete/implement/fix this? ' . code_wrapper_snippet,
 \ 'rewrite': 'Can you rewrite this more idiomatically? ' . code_wrapper_snippet,
 \ 'review': 'Can you provide a code review? ' . code_wrapper_snippet,
 \ 'document': 'Return documentation following language pattern conventions. ' . code_wrapper_snippet,
