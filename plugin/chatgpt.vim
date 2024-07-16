@@ -438,6 +438,8 @@ function! s:ClearChatGPTSession()
       call win_execute(winid, 'close')
     endfor
 
+    " Enter and exit visual mode to clear previous visual selection
+    execute "normal! v\<Esc>"
     echo "ChatGPT session content cleared"
   else
     echo "No active ChatGPT session found"
@@ -459,3 +461,18 @@ endfunction
 command! SetOpenAIBaseURL call s:SetOpenAIBaseURL()
 
 command! -nargs=1 GptBe call SetPersona(<q-args>)
+
+" For debugging
+" function! PrintVisualSelectionPositions()
+"   echo "Start position: " . string(getpos("'<"))
+"   echo "End position: " . string(getpos("'>"))
+"   echo "Current position: " . string(getcurpos())
+" endfunction
+
+" function! SetVisualMarksToCursor()
+"   let curpos = getcurpos()
+"   " execute "normal! v\<Esc>"
+"   call setpos("'<", curpos)
+"   call setpos("'>", curpos)
+"   echo "Visual marks set to cursor position: " . string(curpos)
+" endfunction
