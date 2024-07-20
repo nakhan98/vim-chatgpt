@@ -433,9 +433,12 @@ function! s:ClearChatGPTSession()
     " Delete all lines in the buffer
     silent! call deletebufline(bufnr, 1, '$')
 
-    " Find and close all windows displaying this buffer
+    " Find and close all windows displaying this buffer, except the active one
+    let active_winid = win_getid()
     for winid in win_findbuf(bufnr)
-      call win_execute(winid, 'close')
+      if winid != active_winid
+        call win_execute(winid, 'close')
+      endif
     endfor
 
     " Enter and exit visual mode to clear previous visual selection
