@@ -54,7 +54,7 @@ endif
 let g:promptKeys = keys(g:prompt_templates)
 
 let g:gpt_personas = {
-\ "default": 'You are a helpful expert programmer we are working together to solve complex coding challenges, and I need your help. Please make sure to wrap all code blocks in ``` annotate the programming language you are using.',
+\ "default": 'You are a helpful expert programmer. We are working together to solve complex coding challenges and I need your help. Please make sure to wrap all code blocks in ``` and annotate the programming language you are using.',
 \}
 
 if exists('g:chat_gpt_custom_persona')
