@@ -108,7 +108,7 @@ function! DisplayChatGPTResponse(response, finish_reason, chat_gpt_session_id)
   normal! G
   call cursor('$', 1)
 
-  if finish_reason != ''
+  if finish_reason != '' && chat_gpt_session_id != 'gpt-persistent-session'
     wincmd p
   endif
 endfunction
