@@ -38,6 +38,7 @@ endif
 let code_wrapper_snippet = "Given the following code snippet: "
 let g:prompt_templates = {
 \ 'ask': '',
+\ 'chat': '',
 \ 'rewrite': 'Can you rewrite this more idiomatically? ' . code_wrapper_snippet,
 \ 'review': 'Can you provide a code review? ' . code_wrapper_snippet,
 \ 'document': 'Return documentation following language pattern conventions. ' . code_wrapper_snippet,
@@ -108,9 +109,9 @@ function! DisplayChatGPTResponse(response, finish_reason, chat_gpt_session_id)
   normal! G
   call cursor('$', 1)
 
-  if finish_reason != '' && chat_gpt_session_id != 'gpt-persistent-session'
-    wincmd p
-  endif
+  " if finish_reason != ''
+  "   wincmd p
+  " endif
 endfunction
 
 " Function to interact with ChatGPT
@@ -262,6 +263,12 @@ endfunction
 
 " Function to send highlighted code to ChatGPT
 function! SendHighlightedCodeToChatGPT(ask, context)
+
+  " Ignore text selection if chat selected
+  if a:ask ==# 'chat'
+    execute "normal! v\<Esc>"
+  endif
+
   let save_cursor = getcurpos()
 
   " Save the current yank register
