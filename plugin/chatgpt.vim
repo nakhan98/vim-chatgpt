@@ -20,7 +20,8 @@ if !exists("g:chat_gpt_model")
 endif
 
 if !exists("g:chat_gpt_lang")
-  let g:chat_gpt_lang = ''
+  " ChatGPT-Vim Mod change
+  let g:chat_gpt_lang = v:null
 endif
 
 if !exists("g:chat_gpt_split_direction")
@@ -38,7 +39,6 @@ endif
 let code_wrapper_snippet = "Given the following code snippet: "
 let g:prompt_templates = {
 \ 'ask': '',
-\ 'chat': '',
 \ 'rewrite': 'Can you rewrite this more idiomatically? ' . code_wrapper_snippet,
 \ 'review': 'Can you provide a code review? ' . code_wrapper_snippet,
 \ 'document': 'Return documentation following language pattern conventions. ' . code_wrapper_snippet,
@@ -54,7 +54,7 @@ endif
 let g:promptKeys = keys(g:prompt_templates)
 
 let g:gpt_personas = {
-\ "default": 'You are a helpful expert programmer. We are working together to solve complex coding challenges and I need your help. Please make sure to wrap all code blocks in ``` and annotate the programming language you are using.',
+\ "default": 'You are a helpful expert programmer we are working together to solve complex coding challenges, and I need your help. Please make sure to wrap all code blocks in ``` annotate the programming language you are using.',
 \}
 
 if exists('g:chat_gpt_custom_persona')
@@ -79,6 +79,7 @@ function! DisplayChatGPTResponse(response, finish_reason, chat_gpt_session_id)
     call setbufvar(chat_gpt_session_id, '&swapfile', 0)
     setlocal modifiable
     setlocal wrap
+    setlocal linebreak
     call setbufvar(chat_gpt_session_id, '&ft', 'markdown')
     call setbufvar(chat_gpt_session_id, '&syntax', 'markdown')
   endif
@@ -109,6 +110,7 @@ function! DisplayChatGPTResponse(response, finish_reason, chat_gpt_session_id)
   normal! G
   call cursor('$', 1)
 
+  " ChatGPT-Vim Mod change
   " if finish_reason != ''
   "   wincmd p
   " endif
@@ -137,8 +139,7 @@ def safe_vim_eval(expression):
 def create_client():
     api_type = safe_vim_eval('g:api_type')
     api_key = os.getenv('OPENAI_API_KEY') or safe_vim_eval('g:chat_gpt_key') or safe_vim_eval('g:openai_api_key')
-    openai_base_url = (os.getenv('OPENAI_PROXY') or os.getenv('OPENAI_API_BASE')
-        or safe_vim_eval('g:openai_base_url'))
+    openai_base_url = os.getenv('OPENAI_PROXY') or os.getenv('OPENAI_API_BASE') or safe_vim_eval('g:openai_base_url')
 
     if api_type == 'azure':
         azure_endpoint = safe_vim_eval('g:azure_endpoint')
@@ -170,13 +171,14 @@ def chat_gpt(prompt):
     "gpt-4-turbo-preview": 128000,
     "gpt-4-32k": 32768,
     "gpt-4o": 128000,
+    "gpt-4o-mini": 128000,
   }
 
   max_tokens = int(vim.eval('g:chat_gpt_max_tokens'))
   model = str(vim.eval('g:chat_gpt_model'))
   temperature = float(vim.eval('g:chat_gpt_temperature'))
   lang = str(vim.eval('g:chat_gpt_lang'))
-  resp = lang and f" And respond in {lang}." or ""
+  resp = f" And respond in {lang}." if lang != 'None' else ""
 
   personas = dict(vim.eval('g:gpt_personas'))
   persona  = str(vim.eval('g:chat_persona'))
@@ -230,7 +232,6 @@ def chat_gpt(prompt):
         messages=messages,
         temperature=temperature,
         max_tokens=max_tokens,
-        stop='',
         stream=True
     )
 
@@ -244,16 +245,15 @@ def chat_gpt(prompt):
       chunk_session_id = session_id if session_id else chunk.id
       choice = chunk.choices[0]
       finish_reason = choice.finish_reason
-      content = choice.delta.content
 
       # Call DisplayChatGPTResponse with the finish_reason or content
       if finish_reason:
         vim.command("call DisplayChatGPTResponse('', '{0}', '{1}')".format(finish_reason.replace("'", "''"), chunk_session_id))
-      elif content:
+      elif choice.delta:
+        content = choice.delta.content
         vim.command("call DisplayChatGPTResponse('{0}', '', '{1}')".format(content.replace("'", "''"), chunk_session_id))
 
       vim.command("redraw")
-
   except Exception as e:
     print("Error:", str(e))
 
@@ -262,58 +262,65 @@ EOF
 endfunction
 
 " Function to send highlighted code to ChatGPT
-function! SendHighlightedCodeToChatGPT(ask, context)
+function! SendHighlightedCodeToChatGPT(ask, context) abort
 
-  " Ignore text selection if chat selected
-  if a:ask ==# 'chat'
-    execute "normal! v\<Esc>"
-  endif
-
-  let save_cursor = getcurpos()
-
-  " Save the current yank register
-  let save_reg = @@
-  let save_regtype = getregtype('@')
-
-  let [line_start, col_start] = getpos("'<")[1:2]
-  let [line_end, col_end] = getpos("'>")[1:2]
-
-  " Yank the visually selected text into the unnamed register
-  execute 'normal! ' . line_start . 'G' . col_start . '|v' . line_end . 'G' . col_end . '|y'
-
-  " Send the yanked text to ChatGPT
-  let yanked_text = ''
-  let syntax = &syntax
-
-  if (col_end - col_start > 0) || (line_end - line_start > 0)
-    let yanked_text = '```' . syntax . "\n" . @@ . "\n" . '```'
-  endif
-
-  let prompt = a:context . ' ' . "\n" . yanked_text
-
-  echo a:ask
-  if has_key(g:prompt_templates, a:ask)
-    let template  = g:prompt_templates[a:ask]
-
-    if len(yanked_text) > 0
-      let template = template
+    " Ignore text selection if chat selected (ChatGPT-Vim Mod change)
+    if a:ask ==# 'chat'
+        execute "normal! v\<Esc>"
     endif
 
-    let prompt = template . "\n" . yanked_text . "\n" . a:context
-  endif
+    let save_cursor = getcurpos()
+    let [current_line, current_col] = getcurpos()[1:2]
 
-  call ChatGPT(prompt)
+    " Save the current yank register and its type
+    let save_reg = @@
+    let save_regtype = getregtype('@')
 
-  " Restore the original yank register
-  let @@ = save_reg
-  call setreg('@', save_reg, save_regtype)
-  let curpos = getcurpos()
-  call setpos("'<", curpos)
-  call setpos("'>", curpos)
-  call setpos('.', save_cursor)
+    let [line_start, col_start] = getpos("'<")[1:2]
+    let [line_end, col_end] = getpos("'>")[1:2]
 
+    " Check if a selection is made and if current position is within the selection
+    if (col_end - col_start > 0 || line_end - line_start > 0) &&
+       \ (current_line == line_start && current_col == col_start ||
+       \  current_line == line_end && current_col == col_end)
+
+        let current_line_start = line_start
+        let current_line_end = line_end
+
+        if current_line_start == line_start && current_line_end == line_end
+            execute 'normal! ' . line_start . 'G' . col_start . '|v' . line_end . 'G' . col_end . '|y'
+            let yanked_text = '```' . &syntax . "\n" . @@ . "\n" . '```'
+        else
+            let yanked_text = ''
+        endif
+    else
+        let yanked_text = ''
+    endif
+
+    let prompt = a:context . ' ' . "\n"
+
+    " Include yanked_text in the prompt if it's not empty
+    if !empty(yanked_text)
+        let prompt .= yanked_text . "\n"
+    endif
+
+    echo a:ask
+    if has_key(g:prompt_templates, a:ask)
+        let prompt = g:prompt_templates[a:ask] . "\n" . prompt
+    endif
+
+    call ChatGPT(prompt)
+
+    " Restore the original yank register
+    let @@ = save_reg
+    call setreg('@', save_reg, save_regtype)
+
+    let curpos = getcurpos()
+    call setpos("'<", curpos)
+    call setpos("'>", curpos)
+    call setpos('.', save_cursor)
 endfunction
-"
+
 " Function to generate a commit message
 function! GenerateCommitMessage()
   " Save the current position and yank register
@@ -333,6 +340,80 @@ function! GenerateCommitMessage()
 endfunction
 
 " Menu for ChatGPT
+function! s:ChatGPTMenuSink(id, choice)
+  call popup_hide(a:id)
+  let choices = {}
+
+  for index in range(len(g:promptKeys))
+    let choices[index+1] = g:promptKeys[index]
+  endfor
+
+  if a:choice > 0 && a:choice <= len(g:promptKeys)
+    call SendHighlightedCodeToChatGPT(choices[a:choice], input('Prompt > '))
+  endif
+endfunction
+
+function! s:ChatGPTMenuFilter(id, key)
+
+  if a:key > 0 && a:key <= len(g:promptKeys)
+    call s:ChatGPTMenuSink(a:id, a:key)
+  else " No shortcut, pass to generic filter
+    return popup_filter_menu(a:id, a:key)
+  endif
+endfunction
+
+function! ChatGPTMenu() range
+  echo a:firstline. a:lastline
+  let menu_choices = []
+
+  for index in range(len(g:promptKeys))
+    call add(menu_choices, string(index + 1) . ". " . g:promptKeys[index])
+  endfor
+
+  call popup_menu(menu_choices, #{
+        \ pos: 'topleft',
+        \ line: 'cursor',
+        \ col: 'cursor+2',
+        \ title: ' Chat GPT ',
+        \ highlight: 'question',
+        \ borderchars: ['─', '│', '─', '│', '╭', '╮', '╯', '╰'],
+        \ callback: function('s:ChatGPTMenuSink'),
+        \ border: [],
+        \ cursorline: 1,
+        \ padding: [0,1,0,1],
+        \ filter: function('s:ChatGPTMenuFilter'),
+        \ mapping: 0,
+        \ })
+endfunction
+
+vnoremap <silent> <Plug>(chatgpt-menu) :call ChatGPTMenu()<CR>
+
+function! Capitalize(str)
+    return toupper(strpart(a:str, 0, 1)) . tolower(strpart(a:str, 1))
+endfunction
+
+for i in range(len(g:promptKeys))
+  execute 'command! -range -nargs=? ' . Capitalize(g:promptKeys[i]) . " call SendHighlightedCodeToChatGPT('" . g:promptKeys[i] . "',<q-args>)"
+endfor
+
+command! GenerateCommit call GenerateCommitMessage()
+
+function! SetPersona(persona)
+    let personas = keys(g:gpt_personas)
+    if index(personas, a:persona) != -1
+      echo 'Persona set to: ' . a:persona
+      let g:chat_persona = a:persona
+    else
+      let g:chat_persona = 'default'
+      echo 'Persona set to default, not found ' . a:persona
+    end
+endfunction
+
+
+command! -nargs=1 GptBe call SetPersona(<q-args>)
+
+
+" Menu for ChatGPT (ChatGPT-Vim Mod change)
 if has('nvim')
   " Menu for ChatGPT using inputlist for Neovim
   function! s:ChatGPTMenuSink(choice)
@@ -357,80 +438,9 @@ if has('nvim')
     let choice = inputlist(menu_choices)
     call s:ChatGPTMenuSink(choice)
   endfunction
-else
-  " Original menu for Vim
-  function! s:ChatGPTMenuSink(id, choice)
-    call popup_hide(a:id)
-    let choices = {}
-
-    for index in range(len(g:promptKeys))
-      let choices[index+1] = g:promptKeys[index]
-    endfor
-
-    if a:choice > 0 && a:choice <= len(g:promptKeys)
-      call SendHighlightedCodeToChatGPT(choices[a:choice], input('Prompt > '))
-    endif
-  endfunction
-
-  function! s:ChatGPTMenuFilter(id, key)
-
-    if a:key > 0 && a:key <= len(g:promptKeys)
-      call s:ChatGPTMenuSink(a:id, a:key)
-    else " No shortcut, pass to generic filter
-      return popup_filter_menu(a:id, a:key)
-    endif
-  endfunction
-
-  function! ChatGPTMenu() range
-    echo a:firstline. a:lastline
-    let menu_choices = []
-
-    for index in range(len(g:promptKeys))
-      call add(menu_choices, string(index + 1) . ". " . g:promptKeys[index])
-    endfor
-
-    call popup_menu(menu_choices, #{
-          \ pos: 'topleft',
-          \ line: 'cursor',
-          \ col: 'cursor+2',
-          \ title: ' Chat GPT ',
-          \ highlight: 'question',
-          \ borderchars: ['─', '│', '─', '│', '╭', '╮', '╯', '╰'],
-          \ callback: function('s:ChatGPTMenuSink'),
-          \ border: [],
-          \ cursorline: 1,
-          \ padding: [0,1,0,1],
-          \ filter: function('s:ChatGPTMenuFilter'),
-          \ mapping: 0,
-          \ })
-  endfunction
 endif
 
-" Expose mappings
-vnoremap <silent> <Plug>(chatgpt-menu) :call ChatGPTMenu()<CR>
-
-function! Capitalize(str)
-    return toupper(strpart(a:str, 0, 1)) . tolower(strpart(a:str, 1))
-endfunction
-
-for i in range(len(g:promptKeys))
-  " Commands to interact with ChatGPT
-  execute 'command! -range -nargs=? ' . Capitalize(g:promptKeys[i]) . " call SendHighlightedCodeToChatGPT('" . g:promptKeys[i] . "',<q-args>)"
-endfor
-
-command! GenerateCommit call GenerateCommitMessage()
-
-function! SetPersona(persona)
-    let personas = keys(g:gpt_personas)
-    if index(personas, a:persona) != -1
-      echo 'Persona set to: ' . a:persona
-      let g:chat_persona = a:persona
-    else
-      let g:chat_persona = 'default'
-      echo 'Persona set to default, not found ' . a:persona
-    end
-endfunction
-
+" Other ChatGPT-Vim Mod stuff
 function! s:ClearChatGPTSession()
   " Check if the buffer exists
   if bufexists('gpt-persistent-session')
@@ -469,8 +479,6 @@ function! s:SetOpenAIBaseURL()
 endfunction
 
 command! SetOpenAIBaseURL call s:SetOpenAIBaseURL()
-
-command! -nargs=1 GptBe call SetPersona(<q-args>)
 
 " For debugging
 " function! PrintVisualSelectionPositions()
