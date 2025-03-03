@@ -110,10 +110,9 @@ function! DisplayChatGPTResponse(response, finish_reason, chat_gpt_session_id)
   normal! G
   call cursor('$', 1)
 
-  " ChatGPT-Vim Mod change
-  " if finish_reason != ''
-  "   wincmd p
-  " endif
+  if finish_reason != ''
+    wincmd p
+  endif
 endfunction
 
 " Function to interact with ChatGPT
