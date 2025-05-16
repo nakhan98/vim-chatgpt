@@ -172,6 +172,7 @@ def chat_gpt(prompt):
     "gpt-4o": 128000,
     "gpt-4o-mini": 128000,
     "o3-mini": 200000,
+    "gpt-4.1": 200000,
   }
 
   max_tokens = int(vim.eval('g:chat_gpt_max_tokens'))
